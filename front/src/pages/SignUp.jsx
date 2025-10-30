@@ -19,6 +19,16 @@ const SignUp = () => {
         <h2 className="text-2xl font-bold mb-4 text-emerald-500">Registro</h2>
         <form onSubmit={handleSubmit(onSubmit)} className="items-center flex flex-col gap-4">
           <Imput 
+            type="text" 
+            placeholder="Usuario" 
+            {...register("username", { 
+              required: "El usuario es requerido",
+              minLength: { value: 3, message: "Mínimo 3 caracteres" }
+            })} 
+          />
+          {errors.username && <span className="text-red-600">{errors.username.message}</span>}
+
+          <Imput 
             type="email" 
             placeholder="Email" 
             {...register("email", { 

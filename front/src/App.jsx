@@ -5,6 +5,8 @@ import Dashboard from "./pages/Dashboard"
 import Home from "./pages/Home"
 import Header from "./components/Header"
 import { ProtectedRoute, PublicRoute } from "./components/ProtectedRoute"
+import ForgotPassword from "./pages/ForgotPassword"
+import ResetPassword from "./pages/ResetPassword"
 
 function App() {
 
@@ -30,6 +32,8 @@ function App() {
           <Dashboard />
         </ProtectedRoute>
       } />
+      <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+      <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
     </Routes>
     </>
   )

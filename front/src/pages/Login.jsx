@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { useAuth } from "../context/AuthContext";
 import {Card} from "../components/ui/Card";
 import Imput from "../components/Imput";
+import { Link } from "react-router-dom";
 
 const Login = () => {
 
@@ -33,6 +34,7 @@ const Login = () => {
           <Imput type="password" placeholder="Password" {...register("password", { required: true })} />
           {errors.password && <span className="text-red-600">La contraseña es requerida</span>}
           <button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded mt-2">Login</button>
+          <Link to="/forgot-password" className="text-sm text-emerald-400 hover:text-emerald-300 mt-2">¿Olvidaste tu contraseña?</Link>
           </form>
       </Card>
     </div>

@@ -71,6 +71,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Registro
+  const signup = async (data) => {
+    try {
+      const payload = {
+        username: data.username,
+        email: data.email,
+        password: data.password,
+      };
+      const res = await client.post("/auth/register", payload);
+      // No autenticamos automáticamente: el backend envía email de verificación
+      setErrs(null);
+      return res.data;
+    } catch (error) {
+      if (error.response?.data) {
+        const messages = Array.isArray(error.response.data)
+          ? error.response.data
+          : [error.response.data.message];
+        setErrs(messages);
+      } else {
+        setErrs(["Error de red o servidor"]);
+      }
+      return null;
+    }
+  };
+
   // Logout
   const signout = async () => {
     try {
@@ -90,6 +115,7 @@ export const AuthProvider = ({ children }) => {
         errs,
         loading,
         signin,
+        signup,
         signout,
       }}
     >

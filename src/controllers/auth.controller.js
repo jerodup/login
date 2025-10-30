@@ -1,7 +1,7 @@
 import { pool } from "../db.js";
 import bcrypt from "bcrypt";
 import { createAccessToken, verifyToken, createRefreshToken, verifyRefreshToken } from "../libs/jwrt.js";
-import { verificationEmail } from "../config/mail.config.js";
+import { verificationEmail, resetPasswordEmail } from "../config/mail.config.js";
 import jwt from "jsonwebtoken";
 
 
@@ -196,5 +196,96 @@ export const refreshToken = async (req, res) => {
   } catch (error) {
     console.error("❌ Error en /refresh:", error);
     res.status(500).json({ message: "Error interno del servidor." });
+  }
+};
+
+// Ruta para crear el primer admin (solo una vez)
+export const setupAdmin = async (req, res) => {
+  try {
+    // Verifica si ya hay algún admin
+    const adminCheck = await pool.query(
+      "SELECT 1 FROM users WHERE is_admin = TRUE LIMIT 1"
+    );
+    if (adminCheck.rows.length > 0) {
+      return res.status(403).json({ message: "Ya existe al menos un admin. Esta ruta está deshabilitada." });
+    }
+    const { username, password, email } = req.body;
+    if (!username || !password || !email) {
+      return res.status(400).json({ message: "Faltan campos obligatorios." });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const emailLowerCase = email.toLowerCase();
+    // Crear admin
+    const result = await pool.query(
+      "INSERT INTO users (username, password, email, is_admin, verified) VALUES ($1, $2, $3, TRUE, TRUE) RETURNING *",
+      [username, hashedPassword, emailLowerCase]
+    );
+    const user = result.rows[0];
+    return res.status(201).json({
+      message: "Primer admin creado exitosamente.",
+      user: { id: user.id, username: user.username, email: user.email }
+    });
+  } catch (error) {
+    console.error("❌ Error en setupAdmin:", error);
+    if (error.code === "23505") {
+      return res.status(409).json({ message: "El usuario o correo ya existe." });
+    }
+    return res.status(500).json({ message: "Error interno del servidor." });
+  }
+};
+
+// ruta para solicitar restablecimiento de contraseña
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "El email es requerido." });
+    }
+    const emailLowerCase = email.toLowerCase();
+
+    const result = await pool.query("SELECT id, email FROM users WHERE email = $1", [emailLowerCase]);
+    // Respondemos siempre éxito para no filtrar existencia de cuentas
+    if (result.rows.length === 0) {
+      return res.json({ message: "Si el correo existe, te enviamos instrucciones." });
+    }
+
+    const user = result.rows[0];
+
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      "reset123", // mover a variable de entorno en producción
+      { expiresIn: "1h" }
+    );
+
+    await resetPasswordEmail(user.email, token);
+    return res.json({ message: "Si el correo existe, te enviamos instrucciones." });
+  } catch (error) {
+    console.error("❌ Error en forgotPassword:", error);
+    return res.status(500).json({ message: "Error interno del servidor." });
+  }
+};
+
+// ruta para aplicar nueva contraseña usando token
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) {
+      return res.status(400).json({ message: "Token y nueva contraseña son requeridos." });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, "reset123"); // mover a env en producción
+    } catch (err) {
+      return res.status(400).json({ message: "Token inválido o expirado." });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await pool.query("UPDATE users SET password = $1 WHERE id = $2", [hashedPassword, decoded.userId]);
+
+    return res.json({ message: "Contraseña actualizada exitosamente." });
+  } catch (error) {
+    console.error("❌ Error en resetPassword:", error);
+    return res.status(500).json({ message: "Error interno del servidor." });
   }
 };
